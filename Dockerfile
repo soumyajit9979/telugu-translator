@@ -1,28 +1,23 @@
-# Use Python 3.10 slim image as base
-FROM python:3.10-slim
+# Stage 1: Build dependencies
+FROM python:3.10-slim-buster as build
 
-# Set working directory in container
 WORKDIR /app
 
-# Install system dependencies required for building some Python packages
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    build-essential \
-    python3-dev \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements file first for better cache usage
 COPY app/requirements.txt .
 
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of your application
+# Stage 2: Final image
+FROM python:3.10-slim-buster
+
+WORKDIR /app
+
+# Copy installed dependencies from build stage
+COPY --from=build /usr/local /usr/local
+
+# Copy the rest of the application
 COPY app/ .
 
-# Expose the port for FastAPI
 EXPOSE 8000
 
-# Start FastAPI app with Uvicorn
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
